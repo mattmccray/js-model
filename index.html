@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>js-model Documentation</title>
+</head>
+<body>
+  <h1>js-model</h1>
+
+  <p>Source: <a href="http://github.com/benpickles/js-model">github.com/benpickles/js-model</a></p>
+
+  <p>Dependencies:</p>
+
+  <ul>
+  <li><a href="http://jquery.com/">jQuery</a></li>
+  <li><a href="http://documentcloud.github.com/underscore/">Underscore</a></li>
+  </ul>
+
+  <h2>Models</h2>
+
+  <h3><code>Model()</code></h3>
+
+  <p><code>Model()</code> is a factory for creating model classes:</p>
+
+  <pre><code>var Project = Model('project')
+var project = new Project()
+</code></pre>
+
+  <h3>Attributes</h3>
+
+  <p>Attributes are passed when instantiating a model object and can be directly accessed through the <code>attributes</code> property.</p>
+
+  <pre><code>var project = new Project({ title: "Foo" })
+project.attributes
+// =&gt; { title: "Foo" }
+</code></pre>
+
+  <h4><code>attr(name, [value])</code></h4>
+
+  <p><code>attr</code> takes two forms, passing a single argument will read while a name/value pair will write the attribute value and return <code>this</code> - allowing multiple chained setter calls.</p>
+
+  <pre><code>var project = new Project({ title: "Foo" })
+
+// Get attribute
+project.attr("title")
+// =&gt; "Foo"
+
+// Set attribute
+project.attr("title", "Bar")
+
+// Get attribute again
+project.attr("title")
+// =&gt; "Bar"
+
+// Chain setters
+project.attr("title", "Baz").attr("body", "...")
+// =&gt; project
+</code></pre>
+
+  <h4><code>changes</code></h4>
+
+  <p>Attributes set with the <code>attr</code> method are written to an intermediary object rather than directly to the <code>attributes</code> object, these will be written to <code>attributes</code> at a later stage.</p>
+
+  <pre><code>var project = new Project({ title: "Foo" })
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; {}
+
+// Change title
+project.attr("title", "Bar")
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; { title: "Bar" }
+project.attr("title")          // =&gt; "Bar"
+
+// Change it back to what it was
+project.attr("title", "Foo")
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; {}
+
+// Change title again and reset changes
+project.attr("title", "Bar")
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; { title: "Bar" }
+project.reset()
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; {}
+</code></pre>
+
+  <h3><code>save()</code></h3>
+
+  <p>If the model is valid <code>save</code> will merge any <code>changes</code> with <code>attributes</code>.</p>
+
+  <pre><code>var project = new Project({ title: "Foo" })
+
+// Project requires title to be "Bar" - see above
+project.save()                 // =&gt; false
+
+// Make the model valid and save
+project.attr("title", "Bar")
+project.attributes             // =&gt; { title: "Foo" }
+project.changes                // =&gt; { title: "Bar" }
+project.save()                 // =&gt; true
+
+project.attributes             // =&gt; { title: "Bar" }
+project.changes                // =&gt; {}
+</code></pre>
+
+  <h3>Custom Methods</h3>
+
+  <p>Custom methods can be defined on the model at class creation time, they are added to the model's <code>prototype</code> overwriting the defaults if necessary.</p>
+
+  <pre><code>var Project = Model('project', {
+  foo: function() {
+    ...
+  }
+})
+
+var project = new Project({ ... })
+project.foo()
+// =&gt; Do something
+</code></pre>
+
+  <h3>Validations</h3>
+
+  <p>To add your own validations you should define a custom <code>validate</code> method that adds error messages to the <code>errors</code> array. <code>valid()</code> runs this method and checks that the <code>errors</code> array is empty.</p>
+
+  <pre><code>var Project = Model('project', {
+  validate: function() {
+    if (this.attr("title") != "Bar") {
+      this.errors.push("Title should be Bar")
+    }
+  }
+})
+
+var project = new Project({ title: "Foo" })
+project.valid()               // =&gt; false
+project.errors                // =&gt; ["Title should be Bar"]
+project.attr("title", "Bar")
+project.valid()               // =&gt; true
+project.errors                // =&gt; []
+</code></pre>
+
+  <h3>Persistence</h3>
+
+  <p>It's easy to persist a model's data to the server by defining an adapter when creating the class - a simple REST adapter is provided.</p>
+
+  <pre><code>var Project = Model("project", {
+  persistence: Model.RestPersistence("/projects")
+})
+
+var project = new Project({ title: "Foo" })
+project.newRecord()  // =&gt; true
+
+project.save()
+// Ajax POST request made to /projects
+
+// The model's newly assigned id is extracted from the Ajax response
+project.id()         // =&gt; 1
+project.newRecord()  // =&gt; false
+
+project.attr("title", "Bar").save()
+// Ajax PUT request made to /projects/1
+</code></pre>
+
+  <h3>Events</h3>
+
+  <p>Through its lifetime a model will trigger some events for you to bind to:</p>
+
+  <ul>
+  <li><code>initialize.model_name</code></li>
+  <li><code>create.model_name</code></li>
+  <li><code>update.model_name</code></li>
+  <li><code>destroy.model_name</code></li>
+  </ul>
+
+  <p>Custom events can also be triggered by calling <code>trigger()</code>:</p>
+
+  <pre><code>project.trigger("foo")
+// =&gt; "foo.project" event triggered
+</code></pre>
+</body>
+</html>
