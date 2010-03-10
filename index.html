@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>js-model Documentation</title>
+<link href="/js-model/style.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
   <h1>js-model</h1>
@@ -15,167 +16,192 @@
   <li><a href="http://documentcloud.github.com/underscore/">Underscore</a></li>
   </ul>
 
-  <h2>Models</h2>
+  <h2>Getting started</h2>
 
-  <h3><code>Model()</code></h3>
+  <p>The first thing to do is to create a model class using the factory <code>Model()</code>:</p>
 
-  <p><code>Model()</code> is a factory for creating model classes:</p>
+  <pre><code>var Post = Model("post")</code></pre>
 
-  <pre><code>var Project = Model('project')
-var project = new Project()
-</code></pre>
+  <p>This allows you to create instances of 'post' models, and also contains an internal collection of all 'posts' which can be used for querying.</p>
 
-  <h3>Attributes</h3>
+  <h2>Manipulating objects (without persistence yet)</h2>
 
-  <p>Attributes are passed when instantiating a model object and can be directly accessed through the <code>attributes</code> property.</p>
+  <p>The next thing you need to do is create and manipulate instances of your new JS model. These actions should be fairly familiar to people who have used ActiveRecord.</p>
 
-  <pre><code>var project = new Project({ title: "Foo" })
-project.attributes
-// =&gt; { title: "Foo" }
-</code></pre>
+  <h3><code>create</code></h3>
 
-  <h4><code>attr(name, [value])</code></h4>
+  <pre><code>var post = new Post({ foo: "bar" })</code></pre>
 
-  <p><code>attr</code> takes two forms, passing a single argument will read while a name/value pair will write the attribute value and return <code>this</code> - allowing multiple chained setter calls.</p>
+  <h3><code>update</code></h3>
 
-  <pre><code>var project = new Project({ title: "Foo" })
+  <pre><code>post.update({ foo: "bar" })</code></pre>
 
-// Get attribute
-project.attr("title")
-// =&gt; "Foo"
+  <h3><code>destroy</code></h3>
 
-// Set attribute
-project.attr("title", "Bar")
+  <pre><code>post.destroy()</code></pre>
 
-// Get attribute again
-project.attr("title")
-// =&gt; "Bar"
+  <p>Attributes are read with the attr method, which works in a similar way to JQuery on the DOM:</p>
 
-// Chain setters
-project.attr("title", "Baz").attr("body", "...")
-// =&gt; project
-</code></pre>
+  <pre><code>post.attr("foo");         // Getter
+post.attr("foo", "bar");  // Setter</code></pre>
 
-  <h4><code>changes</code></h4>
+  <p>The id of an object is set after persistence, and is accessible via the <code>id()</code> method.</p>
 
-  <p>Attributes set with the <code>attr</code> method are written to an intermediary object rather than directly to the <code>attributes</code> object, these will be written to <code>attributes</code> at a later stage.</p>
+  <h3>Maintaining the state of collections</h3>
 
-  <pre><code>var project = new Project({ title: "Foo" })
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; {}
+  <p>Instances need to be fed back into the model's collection, so that the results are available to "finders". The 2 main methods which handle this are:</p>
 
-// Change title
-project.attr("title", "Bar")
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; { title: "Bar" }
-project.attr("title")          // =&gt; "Bar"
+  <ul>
+  <li>Post.add(post)</li>
+  <li>Post.remove(post.id())</li>
+  </ul>
 
-// Change it back to what it was
-project.attr("title", "Foo")
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; {}
+  <p>These are called automatically after successful persistence, but can also be called manually.</p>
 
-// Change title again and reset changes
-project.attr("title", "Bar")
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; { title: "Bar" }
-project.reset()
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; {}
-</code></pre>
+  <h2>Finding objects</h2>
 
-  <h3><code>save()</code></h3>
+  <p>Since state is held in the browser, objects need to be queried from our collection in order to be manipulated and used in the UI. This is where js-model is different to several other solutions. It is not a REST-based proxy for the objects on your server, and doesn't rely on constant HTTP requests to gather information. Instead it look up objects in its own cache.</p>
 
-  <p>If the model is valid <code>save</code> will merge any <code>changes</code> with <code>attributes</code>.</p>
+  <p>Different finders are available</p>
 
-  <pre><code>var project = new Project({ title: "Foo" })
+  <pre><code>Post.all()</code></pre>
 
-// Project requires title to be "Bar" - see above
-project.save()                 // =&gt; false
+  <p>and</p>
 
-// Make the model valid and save
-project.attr("title", "Bar")
-project.attributes             // =&gt; { title: "Foo" }
-project.changes                // =&gt; { title: "Bar" }
-project.save()                 // =&gt; true
+  <pre><code>Post.find(id)</code></pre>
 
-project.attributes             // =&gt; { title: "Bar" }
-project.changes                // =&gt; {}
-</code></pre>
+  <p>These are useful for iterating over the collection and finding specific objects, respectively. It is also possible to add custom finders to the collection's prototype (see below).</p>
 
-  <h3>Custom Methods</h3>
+  <h2>Linking data objects to UI elements</h2>
 
-  <p>Custom methods can be defined on the model at class creation time, they are added to the model's <code>prototype</code> overwriting the defaults if necessary.</p>
+  <p>js-model allows you to listen to the lifecycle of objects, based on the events they trigger at different points.</p>
 
-  <pre><code>var Project = Model('project', {
+  <h3>Collection events</h3>
+
+  <p>It is possible to bind to an event occurring when adding an object to a collection. Eg:</p>
+
+  <pre><code>MyCollection.bind("add", function(new_object) {
+  add_object_into_ui(new_object)
+})</code></pre>
+
+  <p>and</p>
+
+  <pre><code>MyCollection.bind("remove", function(removed_object) {
+  remove_object_from_ui(removed_object)
+})</code></pre>
+
+  <h3>Instance events:</h3>
+
+  <p>Parts of your application can be bound to changes which happen to a <strong>specific</strong> instance:</p>
+
+  <pre><code>my_object.bind("update", function() {
+  my_ui_elem.text(my_object.attr("name"))
+})</code></pre>
+
+  <p>Including when the instance is destroyed:</p>
+
+  <pre><code>my_object.bind("remove", function() {
+  my_ui_elem.remove()
+})</code></pre>
+
+  <h2>Persistence</h2>
+
+  <p>State can be persisted in a number of ways, including local storage. However, one of the most common uses is via REST to the originating server. js-model comes bundled with an optional REST persistence adaptor.</p>
+
+  <h3>REST/Ajax persistence</h3>
+
+  <p>Setting up persistence for a given model is handled when the class is created:</p>
+
+  <pre><code>var Post = Model("post", {
+  persistence: Model.RestPersistence("/posts")
+})</code></pre>
+
+  <p>Calling <strong>save</strong> or <strong>destroy</strong> on an object now fires a corresponding REST Request:</p>
+
+  <pre><code>var post = new Post({ foo: "bar" }).save()
+// makes a POST request to "/posts"</code></pre>
+
+  <p>A custom callback can be fed into the save method to execute on success or failure:</p>
+
+  <pre><code>post.save(function(success) {
+  if (success) {
+    alert("yey")
+  } else {
+    alert("boo")
+  }
+})</code></pre>
+
+  <p>The default triggered events (mentioned earlier) are generally only called once persistence is successful.</p>
+
+  <h2>Validations</h2>
+
+  <p>It is possible to have local validations to avoid hitting your server unnecessarily.</p>
+
+  <p>To add your own validations you should define a custom <code>validate</code> method that adds error messages to the <code>errors</code> object. <code>valid()</code> is called on save and checks that <code>errors</code> is empty.</p>
+
+  <pre><code>var Post = Model("post", {
+  validate: function() {
+    if (this.attr("title") != "Bar") {
+      this.errors.add("title", "should be Bar")
+    }
+  }
+})
+
+var post = new Post()
+post.attr("title", "Foo")
+
+post.valid()                // =&gt; false
+post.errors.size()          // =&gt; 1
+post.errors.on("title")     // =&gt; ["should be Bar"]
+post.errors.all()           // =&gt; { title: ["should be Bar"] }
+
+post.attr("title", "Bar")
+
+post.valid()                // =&gt; true
+post.errors.size()          // =&gt; 0
+post.errors.on("title")     // =&gt; []
+post.errors.all()           // =&gt; {}</code></pre>
+
+  <h2>Adding custom methods</h2>
+
+  <p>Since models are objects, there can be a need to give them custom public methods. There are parts to a js-model which can be extended, and these are akin to instance and class methods on an ORM such as ActiveRecord.</p>
+
+  <h3>Instance methods</h3>
+
+  <p>Instance methods are often used to link objects together in a way which mimics the relationships the data might have in the remote database ('has many' etc). However, they can be pretty much anything. These are defined on the model at class creation time, they are added to the model's <code>prototype</code> overwriting the defaults if necessary.</p>
+
+  <pre><code>var Post = Model("post", {
   foo: function() {
     ...
   }
 })
 
-var project = new Project({ ... })
-project.foo()
-// =&gt; Do something
-</code></pre>
+Post.find(3).foo()</code></pre>
 
-  <h3>Validations</h3>
+  <h3>Collection (Class) methods</h3>
 
-  <p>To add your own validations you should define a custom <code>validate</code> method that adds error messages to the <code>errors</code> array. <code>valid()</code> runs this method and checks that the <code>errors</code> array is empty.</p>
+  <p>These are defined by extending the <code>collection</code> method of a model with an altered version of <code>Model.Collection</code>, eg:</p>
 
-  <pre><code>var Project = Model('project', {
-  validate: function() {
-    if (this.attr("title") != "Bar") {
-      this.errors.push("Title should be Bar")
+  <pre><code>var Post = Model("post", {
+  collection: Model.Collection({
+    find_by_foo: function(foo) {
+      return this.detect(function() {
+        return this.attr("foo") == foo;
+      });
     }
-  }
-})
+  })
+}
 
-var project = new Project({ title: "Foo" })
-project.valid()               // =&gt; false
-project.errors                // =&gt; ["Title should be Bar"]
-project.attr("title", "Bar")
-project.valid()               // =&gt; true
-project.errors                // =&gt; []
-</code></pre>
+Post.find_by_foo("bar")</code></pre>
 
-  <h3>Persistence</h3>
+  <h2>Triggering custom events</h2>
 
-  <p>It's easy to persist a model's data to the server by defining an adapter when creating the class - a simple REST adapter is provided.</p>
+  <p>You might also want to have custom events on objects, which are also possible:</p>
 
-  <pre><code>var Project = Model("project", {
-  persistence: Model.RestPersistence("/projects")
-})
+  <pre><code>post.trigger("turn_blue")</code></pre>
 
-var project = new Project({ title: "Foo" })
-project.newRecord()  // =&gt; true
+  <p>Which could be linked up to a UI element.</p>
 
-project.save()
-// Ajax POST request made to /projects
-
-// The model's newly assigned id is extracted from the Ajax response
-project.id()         // =&gt; 1
-project.newRecord()  // =&gt; false
-
-project.attr("title", "Bar").save()
-// Ajax PUT request made to /projects/1
-</code></pre>
-
-  <h3>Events</h3>
-
-  <p>Through its lifetime a model will trigger some events for you to bind to:</p>
-
-  <ul>
-  <li><code>initialize.model_name</code></li>
-  <li><code>create.model_name</code></li>
-  <li><code>update.model_name</code></li>
-  <li><code>destroy.model_name</code></li>
-  </ul>
-
-  <p>Custom events can also be triggered by calling <code>trigger()</code>:</p>
-
-  <pre><code>project.trigger("foo")
-// =&gt; "foo.project" event triggered
-</code></pre>
 <script type="text/javascript">
 var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
 document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
