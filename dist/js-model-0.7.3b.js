@@ -1,4 +1,4 @@
-/*  js-model JavaScript library, version 0.7.3
+/*  js-model JavaScript library, version 0.7.3b
  *  (c) 2010 Ben Pickles
  *
  *  Released under MIT license.
@@ -55,22 +55,25 @@ var Model = function(name, methods) {
     callPersistMethod: function(method, callback) {
       var self = this;
 
-      var manageCollection = function() {
+      var manageCollection = function(changes) {
         if (!self.collection) return;
         if (method == "create") {
           self.collection.add(self);
         } else if (method == "destroy") {
           self.collection.remove(self.id());
+          self.collection.trigger('destroy', [self]);
         } else {
-          self.collection.trigger(method, self);
+          self.collection.trigger(method, [self, changes]);
         };
       };
 
       var wrappedCallback = function(success) {
         if (success) {
-          self.merge(self.changes).reset();
+          var changed = _.clone(self.changes);
 
-          manageCollection();
+          self.merge(changed).reset();
+
+          manageCollection(changed);
 
           self.trigger(method);
         };
@@ -400,42 +403,4 @@ Model.RestPersistence = function(resource, methods) {
 
   return new model_resource();
 };
-Model.LocalStoragePersistence = function(keyName, methods) {
 
-  if(!('localStorage' in window)) throw new Error("This browser does not support local storage.")
-
-  var model_resource = function() {
-    this.keyName = keyName;
-  };
-
-  model_resource.prototype = $.extend({
-
-    create: function(model, callback) {
-      return this.xhr('POST', this.create_path(model), model, callback);
-    },
-
-    destroy: function(model, callback) {
-      return this.xhr('DELETE', this.destroy_path(model), model, callback);
-    },
-
-    update: function(model, callback) {
-      return this.xhr('PUT', this.update_path(model), model, callback);
-    },
-
-    params: function(model) {
-      var params;
-      if (model) {
-        var attributes = model.attr();
-        delete attributes.id;
-        params = {};
-        params[model._name] = attributes;
-      } else {
-        params = null;
-      }
-      return params;
-    },
-
-  }, methods);
-
-  return new model_resource();
-};

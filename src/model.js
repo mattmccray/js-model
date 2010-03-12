@@ -60,12 +60,15 @@ var Model = function(name, methods) {
 
       // Automatically manage adding and removing from a Model.Collection if
       // one is defined.
-      var manageCollection = function() {
+      var manageCollection = function(changes) {
         if (!self.collection) return;
         if (method == "create") {
           self.collection.add(self);
         } else if (method == "destroy") {
           self.collection.remove(self.id());
+          self.collection.trigger('destroy', [self]);
+        } else {
+          self.collection.trigger(method, [self, changes]);
         };
       };
 
@@ -77,11 +80,14 @@ var Model = function(name, methods) {
       // other arguments will also be forwarded to the original callback.
       var wrappedCallback = function(success) {
         if (success) {
+          // Grab a copy of the changes that will survive the .reset() call
+          var changed = _.clone(self.changes);
+          
           // Merge any changes into attributes and clear changes.
-          self.merge(self.changes).reset();
+          self.merge(changed).reset();
 
           // Add/remove from collection if persist was successful.
-          manageCollection();
+          manageCollection(changed);
 
           // Trigger the event before executing the callback.
           self.trigger(method);
