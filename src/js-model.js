@@ -8,4 +8,5 @@
 //= require "model_log"
 //= require "model_collection"
 //= require "model_rest_persistence"
+//= require "model_local_storage_persistence"
 
